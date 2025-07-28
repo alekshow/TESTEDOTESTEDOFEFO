@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import {
   Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { GoogleSheetsService, GridApiService, MatchData } from "@/services/integrations";
+import { DataPreviewSection } from "./DataPreviewSection";
 
 interface ImportLog {
   timestamp: string;
@@ -30,17 +33,19 @@ interface ImportLog {
 
 export const ImportDataSection = () => {
   const [sheetsId, setSheetsId] = useState("1k-PQDvIYat-8rpQW3dHv9XVx5JA2rblDHp2xMCYfiAc");
-  const [gridApiKey, setGridApiKey] = useState("");
   const [importing, setImporting] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [isMasterAccount, setIsMasterAccount] = useState(false);
+  const [matchData, setMatchData] = useState<MatchData[]>([]);
   const [logs, setLogs] = useState<ImportLog[]>([
-    { timestamp: "2024-01-15 14:30", type: "success", message: "Planilha conectada com sucesso" },
-    { timestamp: "2024-01-15 14:28", type: "info", message: "Processando aba SCRIM 15/01..." },
-    { timestamp: "2024-01-15 14:27", type: "success", message: "6 jogos encontrados na aba" },
+    { timestamp: "2024-01-15 14:30", type: "success", message: "Sistema iniciado" },
   ]);
   const { toast } = useToast();
+  const { user, loading, isMasterAccount, signInWithGoogle, signOut, isConfigured } = useAuth();
+
+  // Master account API key
+  const MASTER_API_KEY = "W1is4qaPMP6ZbyivKK6Fl8gww53476vXI8M4NSFp";
+
+  // Get API key from localStorage (set by useAuth when master account)
+  const gridApiKey = localStorage.getItem('gridApiKey') || '';
 
   const addLog = (type: "success" | "error" | "info", message: string) => {
     const newLog: ImportLog = {
@@ -52,35 +57,46 @@ export const ImportDataSection = () => {
   };
 
   const handleSheetsImport = async () => {
+    if (!isConfigured) {
+      toast({
+        title: "Supabase necessário",
+        description: "Configure o Supabase para usar integrações reais",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setImporting(true);
     addLog("info", "Iniciando importação do Google Sheets...");
     
-    // Simulate the import process
-    setTimeout(() => {
-      addLog("info", "Verificando abas com padrão SCRIM...");
-    }, 1000);
-    
-    setTimeout(() => {
-      addLog("success", "Encontradas 5 abas de treino");
-      addLog("info", "Processando jogos: Blue vs Red sides...");
-    }, 2000);
-    
-    setTimeout(() => {
-      addLog("success", "Dados de draft coletados: 30 partidas");
-      addLog("success", "Winrates calculados por adversário");
+    try {
+      const sheetsService = new GoogleSheetsService();
+      const matches = await sheetsService.parseScrimData(sheetsId);
+      
+      setMatchData(matches);
+      addLog("success", `${matches.length} partidas importadas com sucesso`);
       setImporting(false);
+      
       toast({
         title: "Importação concluída",
-        description: "30 partidas importadas com sucesso do Google Sheets",
+        description: `${matches.length} partidas importadas do Google Sheets`,
       });
-    }, 4000);
+    } catch (error: any) {
+      addLog("error", `Erro na importação: ${error.message}`);
+      setImporting(false);
+      toast({
+        title: "Erro na importação",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGridImport = async () => {
     if (!gridApiKey) {
       toast({
         title: "API Key necessária",
-        description: "Insira sua API key do GRID para importar dados",
+        description: "Faça login ou insira sua API key do GRID",
         variant: "destructive"
       });
       return;
@@ -89,56 +105,54 @@ export const ImportDataSection = () => {
     setImporting(true);
     addLog("info", "Conectando à API do GRID...");
     
-    setTimeout(() => {
-      addLog("success", "Conectado à API do GRID");
-      addLog("info", "Coletando dados de partidas recentes...");
-    }, 1500);
-    
-    setTimeout(() => {
-      addLog("success", "Farm data coletado para 15 partidas");
-      addLog("success", "KDA e timing de mortes processados");
-      addLog("success", "Dados de objetivos sincronizados");
+    try {
+      const gridService = new GridApiService(gridApiKey);
+      const playerData = await gridService.fetchPlayerData('player1');
+      
+      addLog("success", `Dados de ${playerData.length} partidas coletados`);
+      addLog("success", "KDA e farm processados");
       setImporting(false);
+      
       toast({
         title: "Sincronização GRID completa",
         description: "Dados detalhados de performance atualizados",
       });
-    }, 3500);
+    } catch (error: any) {
+      addLog("error", `Erro GRID API: ${error.message}`);
+      setImporting(false);
+      toast({
+        title: "Erro na sincronização",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  // Master account API key
-  const MASTER_API_KEY = "W1is4qaPMP6ZbyivKK6Fl8gww53476vXI8M4NSFp";
-
   const handleGmailLogin = async () => {
+    if (!isConfigured) {
+      toast({
+        title: "Configuração necessária",
+        description: "Configure o Supabase para usar login real com Google",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setImporting(true);
     addLog("info", "Iniciando login com Gmail...");
     
-    // Simulate Gmail OAuth login
-    setTimeout(() => {
-      setIsLoggedIn(true);
-      setUserEmail("master@grid.com");
-      setIsMasterAccount(true);
-      setGridApiKey(MASTER_API_KEY);
+    const { error } = await signInWithGoogle();
+    
+    if (!error) {
       addLog("success", "Login realizado com sucesso");
-      addLog("info", "Conta master configurada para coleta de dados");
-      setImporting(false);
-      toast({
-        title: "Login realizado",
-        description: "Conta master configurada com API key GRID",
-      });
-    }, 2000);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserEmail("");
-    setIsMasterAccount(false);
-    setGridApiKey("");
-    addLog("info", "Logout realizado");
-    toast({
-      title: "Logout realizado",
-      description: "Sessão encerrada com sucesso",
-    });
+      if (isMasterAccount) {
+        addLog("info", "Conta master configurada para coleta de dados");
+      }
+    } else {
+      addLog("error", "Erro no login");
+    }
+    
+    setImporting(false);
   };
 
   const currentData = {
@@ -182,7 +196,7 @@ export const ImportDataSection = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!isLoggedIn ? (
+              {!user ? (
                 <div className="text-center space-y-4">
                   <div className="bg-muted/30 p-6 rounded-lg border border-border/50">
                     <Mail className="w-12 h-12 mx-auto mb-4 text-primary" />
@@ -218,7 +232,7 @@ export const ImportDataSection = () => {
                       <User className="w-5 h-5 text-primary" />
                       <div>
                         <h4 className="font-semibold text-primary">Conectado como</h4>
-                        <p className="text-sm text-muted-foreground">{userEmail}</p>
+                        <p className="text-sm text-muted-foreground">{user?.email || 'Email não disponível'}</p>
                       </div>
                     </div>
                     {isMasterAccount && (
@@ -255,7 +269,7 @@ export const ImportDataSection = () => {
                   </div>
 
                   <Button 
-                    onClick={handleLogout} 
+                    onClick={signOut} 
                     variant="outline"
                     className="w-full"
                   >
@@ -347,11 +361,15 @@ export const ImportDataSection = () => {
                   id="grid-api"
                   type="password"
                   value={gridApiKey}
-                  onChange={(e) => setGridApiKey(e.target.value)}
-                  placeholder="Insira sua API key do GRID"
+                  readOnly={isMasterAccount}
+                  placeholder={isMasterAccount ? "API key configurada automaticamente" : "Insira sua API key do GRID"}
+                  className={isMasterAccount ? "bg-muted" : ""}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Usada para coletar dados detalhados de farm, KDA e timings
+                  {isMasterAccount 
+                    ? "API key configurada automaticamente para conta master" 
+                    : "Usada para coletar dados detalhados de farm, KDA e timings"
+                  }
                 </p>
               </div>
 
@@ -464,6 +482,9 @@ export const ImportDataSection = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Preview dos dados importados */}
+      <DataPreviewSection matchData={matchData} />
     </div>
   );
 };
