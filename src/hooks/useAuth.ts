@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { useToast } from '@/hooks/use-toast'
 
@@ -43,14 +43,6 @@ export const useAuth = () => {
   }
 
   const signInWithGoogle = async () => {
-    if (!isSupabaseConfigured) {
-      toast({
-        title: "Configuração necessária",
-        description: "Configure o Supabase nas variáveis de ambiente para usar autenticação real",
-        variant: "destructive"
-      })
-      return { error: new Error("Supabase not configured") }
-    }
 
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -104,6 +96,6 @@ export const useAuth = () => {
     isMasterAccount,
     signInWithGoogle,
     signOut,
-    isConfigured: isSupabaseConfigured
+    isConfigured: true
   }
 }
