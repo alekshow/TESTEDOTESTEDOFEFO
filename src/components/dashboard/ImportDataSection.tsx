@@ -15,7 +15,10 @@ import {
   AlertCircle,
   RefreshCw,
   Download,
-  Settings
+  Settings,
+  Mail,
+  User,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,6 +32,9 @@ export const ImportDataSection = () => {
   const [sheetsId, setSheetsId] = useState("1k-PQDvIYat-8rpQW3dHv9XVx5JA2rblDHp2xMCYfiAc");
   const [gridApiKey, setGridApiKey] = useState("");
   const [importing, setImporting] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [isMasterAccount, setIsMasterAccount] = useState(false);
   const [logs, setLogs] = useState<ImportLog[]>([
     { timestamp: "2024-01-15 14:30", type: "success", message: "Planilha conectada com sucesso" },
     { timestamp: "2024-01-15 14:28", type: "info", message: "Processando aba SCRIM 15/01..." },
@@ -100,6 +106,41 @@ export const ImportDataSection = () => {
     }, 3500);
   };
 
+  // Master account API key
+  const MASTER_API_KEY = "W1is4qaPMP6ZbyivKK6Fl8gww53476vXI8M4NSFp";
+
+  const handleGmailLogin = async () => {
+    setImporting(true);
+    addLog("info", "Iniciando login com Gmail...");
+    
+    // Simulate Gmail OAuth login
+    setTimeout(() => {
+      setIsLoggedIn(true);
+      setUserEmail("master@grid.com");
+      setIsMasterAccount(true);
+      setGridApiKey(MASTER_API_KEY);
+      addLog("success", "Login realizado com sucesso");
+      addLog("info", "Conta master configurada para coleta de dados");
+      setImporting(false);
+      toast({
+        title: "Login realizado",
+        description: "Conta master configurada com API key GRID",
+      });
+    }, 2000);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserEmail("");
+    setIsMasterAccount(false);
+    setGridApiKey("");
+    addLog("info", "Logout realizado");
+    toast({
+      title: "Logout realizado",
+      description: "Sessão encerrada com sucesso",
+    });
+  };
+
   const currentData = {
     totalMatches: 47,
     scrimMatches: 30,
@@ -124,12 +165,108 @@ export const ImportDataSection = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="sheets" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="login" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="login">Login Gmail</TabsTrigger>
           <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
           <TabsTrigger value="grid">API GRID</TabsTrigger>
           <TabsTrigger value="status">Status dos Dados</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="login" className="space-y-4">
+          <Card className="bg-gradient-to-br from-card to-muted/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-primary" />
+                Login Gmail
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isLoggedIn ? (
+                <div className="text-center space-y-4">
+                  <div className="bg-muted/30 p-6 rounded-lg border border-border/50">
+                    <Mail className="w-12 h-12 mx-auto mb-4 text-primary" />
+                    <h3 className="text-lg font-semibold mb-2">Faça login com sua conta Gmail</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Conecte-se para configurar a conta master de coleta de dados
+                    </p>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleGmailLogin} 
+                    disabled={importing}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {importing ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Conectando...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Entrar com Gmail
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3 mb-3">
+                      <User className="w-5 h-5 text-primary" />
+                      <div>
+                        <h4 className="font-semibold text-primary">Conectado como</h4>
+                        <p className="text-sm text-muted-foreground">{userEmail}</p>
+                      </div>
+                    </div>
+                    {isMasterAccount && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Shield className="w-4 h-4 text-accent" />
+                        <Badge variant="default" className="bg-accent text-accent-foreground">
+                          Conta Master
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Configuração Ativa
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>API Key GRID:</span>
+                        <Badge variant="secondary">Configurada</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Coleta automática:</span>
+                        <Badge variant="secondary">Ativada</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Status:</span>
+                        <Badge variant="secondary" className="bg-success text-success-foreground">
+                          Online
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleLogout} 
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Fazer Logout
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="sheets" className="space-y-4">
           <Card className="bg-gradient-to-br from-card to-muted/50">
