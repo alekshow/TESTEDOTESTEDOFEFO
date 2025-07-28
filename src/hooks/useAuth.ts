@@ -6,41 +6,24 @@ import { useToast } from '@/hooks/use-toast'
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isMasterAccount, setIsMasterAccount] = useState(false)
   const { toast } = useToast()
-
-  // Master account API key
-  const MASTER_API_KEY = "W1is4qaPMP6ZbyivKK6Fl8gww53476vXI8M4NSFp"
-  const MASTER_EMAIL = "master@grid.com" // Configure this with your actual master email
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      checkMasterAccount(session?.user)
       setLoading(false)
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      checkMasterAccount(session?.user)
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const checkMasterAccount = (user: User | null) => {
-    if (user?.email === MASTER_EMAIL) {
-      setIsMasterAccount(true)
-      // Store master API key in localStorage for quick access
-      localStorage.setItem('gridApiKey', MASTER_API_KEY)
-    } else {
-      setIsMasterAccount(false)
-      localStorage.removeItem('gridApiKey')
-    }
-  }
 
   const signInWithGoogle = async () => {
 
@@ -60,9 +43,18 @@ export const useAuth = () => {
 
       return { data, error: null }
     } catch (error: any) {
+      console.error('Google Auth Error:', error)
+      
+      let errorMessage = error.message
+      if (error.message?.includes('oauth_callback_failed')) {
+        errorMessage = "Erro na configuração OAuth. Verifique as URLs no Google Cloud Console e Supabase."
+      } else if (error.message?.includes('invalid_redirect')) {
+        errorMessage = "URL de redirect inválida. Verifique a configuração no Supabase."
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       })
       return { data: null, error }
@@ -73,9 +65,6 @@ export const useAuth = () => {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      
-      localStorage.removeItem('gridApiKey')
-      setIsMasterAccount(false)
       
       toast({
         title: "Logout realizado",
@@ -93,7 +82,6 @@ export const useAuth = () => {
   return {
     user,
     loading,
-    isMasterAccount,
     signInWithGoogle,
     signOut,
     isConfigured: true

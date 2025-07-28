@@ -39,13 +39,17 @@ export const ImportDataSection = () => {
     { timestamp: "2024-01-15 14:30", type: "success", message: "Sistema iniciado" },
   ]);
   const { toast } = useToast();
-  const { user, loading, isMasterAccount, signInWithGoogle, signOut, isConfigured } = useAuth();
+  const { user, loading, signInWithGoogle, signOut, isConfigured } = useAuth();
+  const [gridApiKey, setGridApiKey] = useState(localStorage.getItem('gridApiKey') || '');
 
-  // Master account API key
-  const MASTER_API_KEY = "W1is4qaPMP6ZbyivKK6Fl8gww53476vXI8M4NSFp";
-
-  // Get API key from localStorage (set by useAuth when master account)
-  const gridApiKey = localStorage.getItem('gridApiKey') || '';
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (gridApiKey) {
+      localStorage.setItem('gridApiKey', gridApiKey);
+    } else {
+      localStorage.removeItem('gridApiKey');
+    }
+  }, [gridApiKey]);
 
   const addLog = (type: "success" | "error" | "info", message: string) => {
     const newLog: ImportLog = {
@@ -139,17 +143,14 @@ export const ImportDataSection = () => {
     }
 
     setImporting(true);
-    addLog("info", "Iniciando login com Gmail...");
+      addLog("info", "Iniciando login com Gmail...");
     
     const { error } = await signInWithGoogle();
     
     if (!error) {
       addLog("success", "Login realizado com sucesso");
-      if (isMasterAccount) {
-        addLog("info", "Conta master configurada para coleta de dados");
-      }
     } else {
-      addLog("error", "Erro no login");
+      addLog("error", `Erro no login: ${error.message}`);
     }
     
     setImporting(false);
@@ -235,14 +236,6 @@ export const ImportDataSection = () => {
                         <p className="text-sm text-muted-foreground">{user?.email || 'Email não disponível'}</p>
                       </div>
                     </div>
-                    {isMasterAccount && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <Shield className="w-4 h-4 text-accent" />
-                        <Badge variant="default" className="bg-accent text-accent-foreground">
-                          Conta Master
-                        </Badge>
-                      </div>
-                    )}
                   </div>
 
                   <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
@@ -250,22 +243,26 @@ export const ImportDataSection = () => {
                       <Settings className="w-4 h-4" />
                       Configuração Ativa
                     </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>API Key GRID:</span>
-                        <Badge variant="secondary">Configurada</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Coleta automática:</span>
-                        <Badge variant="secondary">Ativada</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Status:</span>
-                        <Badge variant="secondary" className="bg-success text-success-foreground">
-                          Online
-                        </Badge>
-                      </div>
-                    </div>
+                     <div className="space-y-2 text-sm">
+                       <div className="flex justify-between">
+                         <span>API Key GRID:</span>
+                         <Badge variant="secondary">
+                           {gridApiKey ? 'Configurada' : 'Não configurada'}
+                         </Badge>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Integração Google:</span>
+                         <Badge variant="secondary" className="bg-success text-success-foreground">
+                           Ativa
+                         </Badge>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Status:</span>
+                         <Badge variant="secondary" className="bg-success text-success-foreground">
+                           Online
+                         </Badge>
+                       </div>
+                     </div>
                   </div>
 
                   <Button 
@@ -357,20 +354,16 @@ export const ImportDataSection = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="grid-api">API Key GRID</Label>
-                <Input
-                  id="grid-api"
-                  type="password"
-                  value={gridApiKey}
-                  readOnly={isMasterAccount}
-                  placeholder={isMasterAccount ? "API key configurada automaticamente" : "Insira sua API key do GRID"}
-                  className={isMasterAccount ? "bg-muted" : ""}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {isMasterAccount 
-                    ? "API key configurada automaticamente para conta master" 
-                    : "Usada para coletar dados detalhados de farm, KDA e timings"
-                  }
-                </p>
+                 <Input
+                   id="grid-api"
+                   type="password"
+                   value={gridApiKey}
+                   onChange={(e) => setGridApiKey(e.target.value)}
+                   placeholder="Insira sua API key do GRID"
+                 />
+                 <p className="text-sm text-muted-foreground">
+                   Usada para coletar dados detalhados de farm, KDA e timings
+                 </p>
               </div>
 
               <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
@@ -388,11 +381,12 @@ export const ImportDataSection = () => {
                 </div>
               </div>
 
-              <Button 
-                onClick={handleGridImport} 
-                disabled={importing || !gridApiKey}
-                className="w-full"
-              >
+               <div className="flex gap-2">
+                 <Button 
+                   onClick={handleGridImport} 
+                   disabled={importing || !gridApiKey}
+                   className="flex-1"
+                 >
                 {importing ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -403,8 +397,25 @@ export const ImportDataSection = () => {
                     <Database className="w-4 h-4 mr-2" />
                     Sincronizar com GRID
                   </>
-                )}
-              </Button>
+                 )}
+                 </Button>
+                 
+                 {gridApiKey && (
+                   <Button 
+                     onClick={() => {
+                       setGridApiKey('');
+                       toast({
+                         title: "API Key removida",
+                         description: "Sua API key foi removida com sucesso"
+                       });
+                     }}
+                     variant="outline"
+                     size="icon"
+                   >
+                     <RefreshCw className="w-4 h-4" />
+                   </Button>
+                 )}
+               </div>
             </CardContent>
           </Card>
         </TabsContent>
