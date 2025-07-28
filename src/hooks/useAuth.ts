@@ -26,6 +26,9 @@ export const useAuth = () => {
 
 
   const signInWithGoogle = async () => {
+    console.log('🔍 Iniciando login Google...')
+    console.log('🌐 Current origin:', window.location.origin)
+    console.log('🔗 Redirect URL será:', `${window.location.origin}/`)
 
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -41,6 +44,7 @@ export const useAuth = () => {
 
       if (error) throw error
 
+      console.log('✅ Login iniciado com sucesso:', data)
       return { data, error: null }
     } catch (error: any) {
       console.error('Google Auth Error:', error)

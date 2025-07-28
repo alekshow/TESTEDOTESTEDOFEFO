@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { GoogleSheetsService, GridApiService, MatchData } from "@/services/integrations";
 import { DataPreviewSection } from "./DataPreviewSection";
+import { DebugPanel } from "./DebugPanel";
 
 interface ImportLog {
   timestamp: string;
@@ -108,6 +109,9 @@ export const ImportDataSection = () => {
     
     setImporting(true);
     addLog("info", "Conectando à API do GRID...");
+    
+    console.log('🔍 Testando GRID API...')
+    console.log('🔑 API Key:', gridApiKey ? `${gridApiKey.substring(0, 8)}...` : 'VAZIA')
     
     try {
       const gridService = new GridApiService(gridApiKey);
@@ -366,11 +370,30 @@ export const ImportDataSection = () => {
                  </p>
               </div>
 
-              <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  Dados Coletados
-                </h4>
+               <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+                 <h4 className="font-semibold mb-2 flex items-center gap-2">
+                   <Database className="w-4 h-4" />
+                   Status da API
+                 </h4>
+                 <div className="space-y-2 text-sm">
+                   <div className="flex justify-between">
+                     <span>API Key:</span>
+                     <Badge variant={gridApiKey ? "default" : "destructive"}>
+                       {gridApiKey ? `${gridApiKey.substring(0, 8)}...` : 'Não configurada'}
+                     </Badge>
+                   </div>
+                   <div className="flex justify-between">
+                     <span>Comprimento:</span>
+                     <Badge variant="outline">{gridApiKey.length} caracteres</Badge>
+                   </div>
+                 </div>
+               </div>
+
+               <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
+                 <h4 className="font-semibold mb-2 flex items-center gap-2">
+                   <Database className="w-4 h-4" />
+                   Dados Coletados
+                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <Badge variant="outline">Farm por minuto</Badge>
                   <Badge variant="outline">KDA detalhado</Badge>
@@ -381,41 +404,61 @@ export const ImportDataSection = () => {
                 </div>
               </div>
 
-               <div className="flex gap-2">
-                 <Button 
-                   onClick={handleGridImport} 
-                   disabled={importing || !gridApiKey}
-                   className="flex-1"
-                 >
-                {importing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Sincronizando...
-                  </>
-                ) : (
-                  <>
-                    <Database className="w-4 h-4 mr-2" />
-                    Sincronizar com GRID
-                  </>
-                 )}
-                 </Button>
-                 
-                 {gridApiKey && (
-                   <Button 
-                     onClick={() => {
-                       setGridApiKey('');
-                       toast({
-                         title: "API Key removida",
-                         description: "Sua API key foi removida com sucesso"
-                       });
-                     }}
-                     variant="outline"
-                     size="icon"
-                   >
-                     <RefreshCw className="w-4 h-4" />
-                   </Button>
-                 )}
-               </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    console.log('🧪 Teste da API Key:', {
+                      key: gridApiKey ? `${gridApiKey.substring(0, 8)}...` : 'VAZIA',
+                      length: gridApiKey.length,
+                      valid: gridApiKey.length > 10
+                    });
+                    toast({
+                      title: "API Key testada",
+                      description: `Comprimento: ${gridApiKey.length} caracteres. Verifique o console para detalhes.`,
+                      variant: gridApiKey.length > 10 ? "default" : "destructive"
+                    });
+                  }}
+                  variant="outline"
+                  disabled={!gridApiKey}
+                  className="flex-1"
+                >
+                  🧪 Testar API Key
+                </Button>
+                
+                <Button 
+                  onClick={handleGridImport} 
+                  disabled={importing || !gridApiKey}
+                  className="flex-1"
+                >
+                  {importing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Sincronizando...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Sincronizar com GRID
+                    </>
+                  )}
+                </Button>
+                
+                {gridApiKey && (
+                  <Button 
+                    onClick={() => {
+                      setGridApiKey('');
+                      toast({
+                        title: "API Key removida",
+                        description: "Sua API key foi removida com sucesso"
+                      });
+                    }}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -493,6 +536,9 @@ export const ImportDataSection = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Debug Panel */}
+      <DebugPanel gridApiKey={gridApiKey} user={user} />
 
       {/* Preview dos dados importados */}
       <DataPreviewSection matchData={matchData} />
