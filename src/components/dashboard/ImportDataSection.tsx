@@ -181,23 +181,32 @@ export const ImportDataSection = () => {
 
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => {
-                    console.log('🧪 Teste da API Key:', {
-                      key: gridApiKey ? `${gridApiKey.substring(0, 8)}...` : 'VAZIA',
-                      length: gridApiKey.length,
-                      valid: gridApiKey.length > 10
-                    });
-                    toast({
-                      title: "API Key testada",
-                      description: `Comprimento: ${gridApiKey.length} caracteres. Verifique o console para detalhes.`,
-                      variant: gridApiKey.length > 10 ? "default" : "destructive"
-                    });
+                  onClick={async () => {
+                    try {
+                      const gridService = new GridApiService(gridApiKey)
+                      const result = await gridService.testConnection()
+                      
+                      toast({
+                        title: result.success ? "Conexão bem-sucedida" : "Erro de conexão",
+                        description: result.message,
+                        variant: result.success ? "default" : "destructive"
+                      })
+                      
+                      addLog(result.success ? "success" : "error", result.message)
+                    } catch (error: any) {
+                      toast({
+                        title: "Erro de conexão",
+                        description: "Erro ao testar conexão com GRID API",
+                        variant: "destructive"
+                      })
+                      addLog("error", `Erro ao testar conexão: ${error.message}`)
+                    }
                   }}
                   variant="outline"
                   disabled={!gridApiKey}
                   className="flex-1"
                 >
-                  🧪 Testar API Key
+                  🧪 Testar Conexão GRID
                 </Button>
                 
                 <Button 

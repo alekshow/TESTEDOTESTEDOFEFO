@@ -105,27 +105,113 @@ export class GoogleSheetsService {
 // GRID API service
 export class GridApiService {
   private apiKey: string
+  private supabaseUrl: string
+  private supabaseKey: string
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
+    this.supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+    this.supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  }
+
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      const testQuery = `
+        query {
+          leagues {
+            id
+            name
+          }
+        }
+      `
+
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/grid-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          apiKey: this.apiKey,
+          query: testQuery
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.data) {
+        return {
+          success: true,
+          message: 'Conexão com GRID API estabelecida com sucesso!'
+        }
+      } else {
+        return {
+          success: false,
+          message: data.error || 'Erro ao conectar com GRID API'
+        }
+      }
+    } catch (error) {
+      console.error('Error testing GRID connection:', error)
+      return {
+        success: false,
+        message: 'Erro de conexão. Verifique sua API key e tente novamente.'
+      }
+    }
   }
 
   async fetchPlayerData(playerId: string, gameId?: string): Promise<GridPlayerData[]> {
     try {
-      // Mock implementation - replace with actual GRID API endpoints
-      const response = await fetch(`https://api.grid.gg/v1/players/${playerId}/matches`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+      const query = `
+        query GetPlayerMatches($playerId: String!) {
+          player(id: $playerId) {
+            matches(first: 10) {
+              nodes {
+                id
+                startTime
+                duration
+                participants {
+                  player {
+                    id
+                  }
+                  champion {
+                    id
+                    name
+                  }
+                  stats {
+                    kills
+                    deaths
+                    assists
+                    totalMinionsKilled
+                    goldEarned
+                    totalDamageDealtToChampions
+                  }
+                }
+              }
+            }
+          }
         }
+      `
+
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/grid-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          apiKey: this.apiKey,
+          query,
+          variables: { playerId }
+        })
       })
 
-      if (!response.ok) {
-        throw new Error(`GRID API error: ${response.statusText}`)
-      }
-
       const data = await response.json()
-      return this.transformGridData(data)
+
+      if (response.ok && data.data) {
+        return this.transformGridData(data.data)
+      } else {
+        throw new Error(data.error || 'Erro ao buscar dados do jogador')
+      }
     } catch (error) {
       console.error('Error fetching GRID data:', error)
       // Return mock data for demonstration
@@ -134,20 +220,26 @@ export class GridApiService {
   }
 
   private transformGridData(rawData: any): GridPlayerData[] {
-    // Transform GRID API response to our format
-    return rawData.matches?.map((match: any) => ({
-      playerId: match.participant.playerId,
-      championId: match.participant.championId,
-      kda: {
-        kills: match.stats.kills,
-        deaths: match.stats.deaths,
-        assists: match.stats.assists
-      },
-      cs: match.stats.totalMinionsKilled,
-      gold: match.stats.goldEarned,
-      damage: match.stats.totalDamageDealtToChampions,
-      gameTime: match.info.gameDuration
-    })) || []
+    // Transform GRID GraphQL response to our format
+    const matches = rawData.player?.matches?.nodes || []
+    
+    return matches.flatMap((match: any) => 
+      match.participants
+        .filter((p: any) => p.player.id === rawData.player?.id)
+        .map((participant: any) => ({
+          playerId: participant.player.id,
+          championId: participant.champion.name,
+          kda: {
+            kills: participant.stats.kills,
+            deaths: participant.stats.deaths,
+            assists: participant.stats.assists
+          },
+          cs: participant.stats.totalMinionsKilled,
+          gold: participant.stats.goldEarned,
+          damage: participant.stats.totalDamageDealtToChampions,
+          gameTime: match.duration
+        }))
+    )
   }
 
   private getMockGridData(): GridPlayerData[] {
