@@ -23,7 +23,7 @@ export const DataPreviewSection = ({ matchData }: DataPreviewSectionProps) => {
           <div className="text-center text-muted-foreground">
             <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>Nenhum dado importado ainda</p>
-            <p className="text-sm">Use as abas acima para importar dados do Google Sheets ou GRID API</p>
+            <p className="text-sm">Use a aba de API GRID para importar dados</p>
           </div>
         </CardContent>
       </Card>

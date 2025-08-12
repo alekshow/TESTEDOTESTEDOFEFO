@@ -7,27 +7,18 @@ import {
   Bug, 
   ChevronDown, 
   ChevronRight,
-  Globe,
   Key,
-  Database,
-  AlertTriangle
+  Database
 } from "lucide-react";
 
 interface DebugPanelProps {
   gridApiKey: string;
-  user: any;
 }
 
-export const DebugPanel = ({ gridApiKey, user }: DebugPanelProps) => {
+export const DebugPanel = ({ gridApiKey }: DebugPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const debugInfo = {
-    googleAuth: {
-      currentOrigin: window.location.origin,
-      redirectUrl: `${window.location.origin}/`,
-      userLoggedIn: !!user,
-      userEmail: user?.email || 'N/A'
-    },
     gridApi: {
       keyLength: gridApiKey.length,
       keyPresent: !!gridApiKey,
@@ -42,19 +33,6 @@ export const DebugPanel = ({ gridApiKey, user }: DebugPanelProps) => {
     }
   };
 
-  const getUrlConfigGuide = () => {
-    const currentUrl = `${window.location.origin}/`;
-    const callbackUrl = `https://iuwzrpiipahkfcnknric.supabase.co/auth/v1/callback`;
-    
-    return {
-      currentUrl,
-      callbackUrl,
-      googleCloudUrls: [currentUrl],
-      supabaseUrls: [currentUrl]
-    };
-  };
-
-  const urlConfig = getUrlConfigGuide();
 
   return (
     <Card className="bg-gradient-to-br from-card to-muted/50 border-2 border-dashed border-primary/20">
@@ -74,63 +52,6 @@ export const DebugPanel = ({ gridApiKey, user }: DebugPanelProps) => {
         
         <CollapsibleContent>
           <CardContent className="space-y-6">
-            {/* Google Auth Debug */}
-            <div className="space-y-3">
-              <h4 className="font-semibold flex items-center gap-2">
-                <Globe className="w-4 h-4 text-blue-500" />
-                Google OAuth Debug
-              </h4>
-              <div className="bg-muted/30 p-4 rounded-lg space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>URL Atual:</span>
-                  <Badge variant="outline">{debugInfo.googleAuth.currentOrigin}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Redirect URL:</span>
-                  <Badge variant="outline">{debugInfo.googleAuth.redirectUrl}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Usuário Logado:</span>
-                  <Badge variant={debugInfo.googleAuth.userLoggedIn ? "default" : "destructive"}>
-                    {debugInfo.googleAuth.userLoggedIn ? 'Sim' : 'Não'}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Email:</span>
-                  <Badge variant="outline">{debugInfo.googleAuth.userEmail}</Badge>
-                </div>
-              </div>
-              
-              {/* URLs de Configuração */}
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                  <span className="font-semibold text-yellow-800 dark:text-yellow-200">
-                    Configuração necessária para resolver redirect_uri_mismatch
-                  </span>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <strong>Google Cloud Console:</strong>
-                    <div className="mt-1 p-2 bg-white dark:bg-gray-800 rounded border font-mono text-xs">
-                      Authorized JavaScript origins: {urlConfig.currentUrl}
-                    </div>
-                    <div className="mt-1 p-2 bg-white dark:bg-gray-800 rounded border font-mono text-xs">
-                      Authorized redirect URIs: {urlConfig.callbackUrl}
-                    </div>
-                  </div>
-                  <div>
-                    <strong>Supabase Dashboard:</strong>
-                    <div className="mt-1 p-2 bg-white dark:bg-gray-800 rounded border font-mono text-xs">
-                      Site URL: {urlConfig.currentUrl}
-                    </div>
-                    <div className="mt-1 p-2 bg-white dark:bg-gray-800 rounded border font-mono text-xs">
-                      Redirect URLs: {urlConfig.currentUrl}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* GRID API Debug */}
             <div className="space-y-3">
@@ -195,7 +116,6 @@ export const DebugPanel = ({ gridApiKey, user }: DebugPanelProps) => {
               <Button 
                 onClick={() => {
                   console.log('🔍 DEBUG INFO COMPLETO:', debugInfo);
-                  console.log('🌐 URL CONFIG:', urlConfig);
                 }}
                 variant="outline"
                 size="sm"
@@ -206,8 +126,7 @@ export const DebugPanel = ({ gridApiKey, user }: DebugPanelProps) => {
               <Button 
                 onClick={() => {
                   navigator.clipboard.writeText(JSON.stringify({
-                    debugInfo,
-                    urlConfig
+                    debugInfo
                   }, null, 2));
                   alert('Debug info copiado para clipboard!');
                 }}
